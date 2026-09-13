@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10151d"><meta name="description" content="今ここから、月のある方向を。夜の散歩のための月探しツール。">
+  <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>月どこ — 今夜の月を探す</title>
+  <link rel="manifest" href="./manifest.json"><link rel="icon" href="./icons/icon-192.png"><link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./vendor/suncalc.js" defer></script><script src="./vendor/geomagnetism.js" defer></script><script type="module" src="./app.js"></script>
+</head>
+<body>
+<main>
+  <header><h1>月どこ<span class="brand-dot" aria-hidden="true"></span></h1><span id="connection">今、この場所から</span></header>
+  <section class="finder" aria-labelledby="message">
+    <p class="eyebrow" id="mode">夜の散歩に、月の目印。</p>
+    <div class="scope" aria-hidden="true">
+      <span class="axis north">上</span><span class="axis east">右</span><span class="axis south">下</span><span class="axis west">左</span>
+      <div class="crosshair"></div><div class="inner-ring"></div>
+      <div id="marker" class="marker idle"><span id="symbol">☾</span></div>
+    </div>
+    <div class="guidance"><h2 id="message" role="status" aria-live="polite">今夜の月は、どこだろう。</h2><p id="instruction">現在地を使って、月の方向を調べる。</p></div>
+    <div class="actions"><button id="locate" class="primary">現在地を使う <span aria-hidden="true">↗</span></button><button id="sensor" class="primary" hidden>方角を使う <span aria-hidden="true">↗</span></button></div>
+    <p id="location-status" class="fine">位置情報は端末の中だけで使う。</p><p id="sensor-status" class="fine" role="status"></p>
+  </section>
+  <section class="moon-info" aria-label="現在の月の情報">
+    <div class="info-heading"><span>いまの月</span><time id="time">—</time></div>
+    <dl><div><dt>方位</dt><dd id="azimuth">—</dd></div><div><dt>高度</dt><dd id="altitude">—</dd></div><div><dt>月相</dt><dd id="phase">—</dd></div></dl>
+    <p id="horizon">現在地を取得すると表示される</p>
+  </section>
+  <footer><details><summary>使い方・ホーム画面に追加</summary><div class="help">
+    <p>画面を自分に向け、背面カメラを空へかざす。矢印の方向へ動かし、中央に月のマーカーが集まれば「この先」。横向きにした場合は縦画面へ戻して使う。</p>
+    <p>iPhoneでは最初に画面を上にして水平に持つと方位が整う。方角がずれるときも水平に戻す。磁石や金属から離して使う。</p>
+    <p>ホーム画面へ追加：Safariの共有メニューから「ホーム画面に追加」を選ぶ。ホーム画面からの初回起動でも、位置と方角の許可が必要な場合がある。</p>
+    <p>一度読み込むと基本画面と計算はオフラインで使える。保存した位置は24時間以内のものを明示して使う。移動したら現在地を取り直そう。</p>
+    <p>雲の向こうの方向も案内できる。建物や山、雲の有無は判定しない。コンパスと計算には誤差があるため、月を探すための目安として使う。</p>
+    <button id="refresh" class="text-button">現在地を取り直す</button><button id="forget" class="text-button">保存した位置を消す</button><p id="offline-status" class="fine"></p>
+  </div></details><span class="footer-mark">LOOK UP, SLOW DOWN.</span></footer>
+  <noscript>月の方向を計算するにはJavaScriptを有効にして再読み込みしてね。</noscript>
+</main>
+</body></html>
