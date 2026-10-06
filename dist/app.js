@@ -1,18 +1,27 @@
-import {wrap,difference,clamp,moonAt,phaseName,compassName,orientationBasis,guidance,readSavedLocation} from './navigation.js';
+import {wrap,difference,clamp,moonAt,phaseName,compassName,orientationBasis,guidance,readSavedLocation,nextMoonEvent,formatMoonEventTime,moonEventSearchDays} from './navigation.js';
 const $=id=>document.getElementById(id);
-const ui=Object.fromEntries(['locate','sensor','message','instruction','mode','marker','symbol','location-status','sensor-status','azimuth','altitude','phase','time','horizon','connection','offline-status'].map(id=>[id,$(id)]));
+const ui=Object.fromEntries(['locate','sensor','message','instruction','mode','marker','symbol','location-status','sensor-status','azimuth','altitude','phase','time','horizon','connection','offline-status','moon-event','moon-event-label','moon-event-time'].map(id=>[id,$(id)]));
 let location=null,moon=null,basis=null,watch=null,geoGeneration=0,offset=null,lastSensor=0,sensorWanted=false,sensorState='',declination=null,magneticReliable=false;
-let lastRender=0,lastAbsolute=0;
+let lastRender=0,lastAbsolute=0,eventCache=null;
 const text=(id,value)=>{if(ui[id].textContent!==value)ui[id].textContent=value;};
 function setLocationStatus(){if(!location)return;const saved=location.saved?'保存した位置':'現在地';const stamp=new Date(location.timestamp).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});text('location-status',`${saved} · ${stamp}取得${Number.isFinite(location.accuracy)?` · 誤差 約${Math.round(location.accuracy)}m`:''}`);}
 function updateMoon(){
   if(!location)return;
-  moon=moonAt(new Date(),location.latitude,location.longitude,globalThis.SunCalc);
+  const now=new Date();
+  moon=moonAt(now,location.latitude,location.longitude,globalThis.SunCalc);
+  const eventKey=`${location.latitude},${location.longitude},${moon.aboveHorizon}`;
+  if(!eventCache||eventCache.key!==eventKey||now<eventCache.checked||now-eventCache.checked>600000||(eventCache.event.time&&eventCache.event.time<=now)){
+    eventCache={key:eventKey,checked:now,event:nextMoonEvent(now,location.latitude,location.longitude,globalThis.SunCalc,moon.aboveHorizon)};
+  }
+  const event=eventCache.event;
+  ui['moon-event'].hidden=false;
+  text('moon-event-label',event.type==='rise'?'次に昇る時刻（月の出）':'次に沈む時刻（月の入り）');
+  text('moon-event-time',event.time?formatMoonEventTime(event.time,now):`${moonEventSearchDays}日以内には${event.type==='rise'?'昇らない':'沈まない'}`);
   try{const field=globalThis.geomagnetism.model(new Date()).point([location.latitude,location.longitude]);declination=field.decl;magneticReliable=Number.isFinite(declination)&&field.h>=2000;}catch{declination=null;magneticReliable=false;}
   text('azimuth',compassName(moon.azimuth));ui.azimuth.title=`真北から時計回り ${moon.azimuth.toFixed(1)}°`;
   text('altitude',`${Math.round(moon.altitude)}°`);text('phase',phaseName(moon.phase));ui.phase.title=`明るい面 ${Math.round(moon.illumination*100)}%`;
   text('time',new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}));
-  text('horizon',`${moon.altitude<0?'地平線の下':'地平線の上'} · 方位 ${Math.round(moon.azimuth)}° · 明るい面 ${Math.round(moon.illumination*100)}%`);render();
+  text('horizon',`${moon.aboveHorizon?'地平線の上':'地平線の下'} · 方位 ${Math.round(moon.azimuth)}° · 明るい面 ${Math.round(moon.illumination*100)}%`);render();
 }
 function resetOrientation(){basis=null;offset=null;lastSensor=0;lastAbsolute=0;}
 function geoError(error,generation){
@@ -78,7 +87,7 @@ function setMarker(symbol,kind='idle',x=0,y=0){text('symbol',symbol);ui.marker.c
 function render(){
   text('sensor-status',sensorState);
   if(!moon)return;
-  if(moon.altitude<0){setMarker('↓','below');text('mode','今は、空の下側。');text('message','いま月は地平線の下です');text('instruction',`${compassName(moon.azimuth)}・高度 ${Math.round(moon.altitude)}°。今は空に見えない。`);return;}
+  if(!moon.aboveHorizon){setMarker('↓','below');text('mode','今は、空の下側。');text('message','いま月は地平線の下です');text('instruction',`${compassName(moon.azimuth)}・高度 ${Math.round(moon.altitude)}°。今は空に見えない。`);return;}
   if(window.innerWidth>window.innerHeight&&sensorWanted){setMarker('↻');text('message','スマホを縦に戻してね');text('instruction','画面を自分に向けて、空へかざそう。');return;}
   text('mode','月のある方へ。');
   if(!basis||performance.now()-lastSensor>4000){setMarker('☾');text('message',`月は${compassName(moon.azimuth)}、高度${Math.round(moon.altitude)}°`);text('instruction',sensorWanted?'方角が整うと、ここに矢印が出る。':'方角を許可すると、矢印で案内する。');return;}
@@ -93,14 +102,14 @@ function render(){
 }
 function connection(){text('connection',navigator.onLine?'今、この場所から':'オフライン');}
 ui.locate.addEventListener('click',locate);ui.sensor.addEventListener('click',enableSensors);$('refresh').addEventListener('click',locate);
-$('forget').addEventListener('click',()=>{geoGeneration++;if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;try{localStorage.removeItem('tsukidoko.location');}catch{}location=moon=null;resetOrientation();ui.locate.hidden=false;ui.locate.disabled=false;ui.sensor.hidden=true;['azimuth','altitude','phase','time'].forEach(id=>text(id,'—'));setMarker('☾');text('message','位置情報が必要です');text('instruction','現在地を使って、月の方向を調べる。');text('location-status','保存した位置を消した。');text('horizon','現在地を取得すると表示される');});
+$('forget').addEventListener('click',()=>{geoGeneration++;if(watch!==null)navigator.geolocation.clearWatch(watch);watch=null;try{localStorage.removeItem('tsukidoko.location');}catch{}location=moon=null;eventCache=null;ui['moon-event'].hidden=true;resetOrientation();ui.locate.hidden=false;ui.locate.disabled=false;ui.sensor.hidden=true;['azimuth','altitude','phase','time'].forEach(id=>text(id,'—'));setMarker('☾');text('message','位置情報が必要です');text('instruction','現在地を使って、月の方向を調べる。');text('location-status','保存した位置を消した。');text('horizon','現在地を取得すると表示される');});
 window.addEventListener('online',connection);window.addEventListener('offline',connection);window.addEventListener('resize',render);
 document.addEventListener('visibilitychange',()=>{resetOrientation();if(!document.hidden){updateMoon();if(location)locate();}});
 window.addEventListener('pageshow',e=>{if(e.persisted){resetOrientation();updateMoon();}});
-setInterval(()=>{if(!document.hidden){if(location&&Date.now()-location.timestamp>=86400000){location=moon=null;resetOrientation();ui.locate.hidden=false;ui.sensor.hidden=true;text('message','現在地を取り直してね');text('instruction','保存した位置が古くなった。');['azimuth','altitude','phase'].forEach(id=>text(id,'—'));setMarker('☾');}updateMoon();}},15000);
+setInterval(()=>{if(!document.hidden){if(location&&Date.now()-location.timestamp>=86400000){location=moon=null;eventCache=null;ui['moon-event'].hidden=true;resetOrientation();ui.locate.hidden=false;ui.sensor.hidden=true;text('message','現在地を取り直してね');text('instruction','保存した位置が古くなった。');['azimuth','altitude','phase'].forEach(id=>text(id,'—'));setMarker('☾');}updateMoon();}},15000);
 setInterval(()=>{if(sensorWanted&&basis&&performance.now()-lastSensor>4000){basis=null;sensorState='方角の更新が止まった。方角を再試行してね。';ui.sensor.hidden=false;ui.sensor.textContent='方角を再試行';render();}},1000);
 connection();try{location=readSavedLocation(localStorage);if(location){location.saved=true;setLocationStatus();ui.sensor.hidden=false;ui.locate.textContent='現在地を取り直す';updateMoon();}}catch{}
 if('serviceWorker' in navigator&&window.isSecureContext){navigator.serviceWorker.register('./sw.js').then(async reg=>{await navigator.serviceWorker.ready;text('offline-status','オフライン起動の準備ができた。');if(reg.waiting)text('offline-status','新しい版がある。アプリを閉じて開き直すと更新される。');}).catch(()=>text('offline-status','オフライン保存ができなかった。通信のある場所で開き直してね。'));}
 // Optional read-only agent access uses the same calculated state and never
 // requests permissions or returns the user's coordinates.
-if(document.modelContext?.registerTool){try{Promise.resolve(document.modelContext.registerTool({name:'read_current_moon',description:'Read the current moon direction already shown on the page. Does not request location or sensor permission.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute(input){if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw Error('Expected an empty object');if(!moon)return {status:'location_required'};return {status:'ready',azimuth:moon.azimuth,altitude:moon.altitude,phase:phaseName(moon.phase),aboveHorizon:moon.altitude>=0,savedLocation:!!location.saved};}})).catch(()=>{});}catch{}}
+if(document.modelContext?.registerTool){try{Promise.resolve(document.modelContext.registerTool({name:'read_current_moon',description:'Read the current moon direction already shown on the page. Does not request location or sensor permission.',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true},execute(input){if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw Error('Expected an empty object');if(!moon)return {status:'location_required'};return {status:'ready',azimuth:moon.azimuth,altitude:moon.altitude,phase:phaseName(moon.phase),aboveHorizon:moon.aboveHorizon,savedLocation:!!location.saved};}})).catch(()=>{});}catch{}}

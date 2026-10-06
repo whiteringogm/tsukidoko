@@ -27,6 +27,10 @@
     <div class="info-heading"><span>いまの月</span><time id="time">—</time></div>
     <dl><div><dt>方位</dt><dd id="azimuth">—</dd></div><div><dt>高度</dt><dd id="altitude">—</dd></div><div><dt>月相</dt><dd id="phase">—</dd></div></dl>
     <p id="horizon">現在地を取得すると表示される</p>
+    <div id="moon-event" class="moon-event" hidden aria-live="polite">
+      <p><span id="moon-event-label"></span><strong id="moon-event-time"></strong></p>
+      <small>地平線を基準にした目安 · 端末の時刻</small>
+    </div>
   </section>
   <footer><details><summary>使い方・ホーム画面に追加</summary><div class="help">
     <p>画面を自分に向け、背面カメラを空へかざす。矢印の方向へ動かし、中央に月のマーカーが集まれば「この先」。横向きにした場合は縦画面へ戻して使う。</p>
@@ -34,6 +38,7 @@
     <p>ホーム画面へ追加：Safariの共有メニューから「ホーム画面に追加」を選ぶ。ホーム画面からの初回起動でも、位置と方角の許可が必要な場合がある。</p>
     <p>一度読み込むと基本画面と計算はオフラインで使える。保存した位置は24時間以内のものを明示して使う。移動したら現在地を取り直そう。</p>
     <p>雲の向こうの方向も案内できる。建物や山、雲の有無は判定しない。コンパスと計算には誤差があるため、月を探すための目安として使う。</p>
+    <p>月が地平線の下なら次の月の出、上なら次の月の入りを表示する。雲・山・建物や空の明るさによって、実際に見える時間は変わる。時刻は現在地から計算し、端末のタイムゾーンで表示する。</p>
     <button id="refresh" class="text-button">現在地を取り直す</button><button id="forget" class="text-button">保存した位置を消す</button><p id="offline-status" class="fine"></p>
   </div></details><span class="footer-mark">LOOK UP, SLOW DOWN.</span></footer>
   <noscript>月の方向を計算するにはJavaScriptを有効にして再読み込みしてね。</noscript>

@@ -1,4 +1,6 @@
 export const rad = Math.PI / 180;
+// Same apparent-altitude threshold as SunCalc.getMoonTimes (moon's upper limb).
+export const moonHorizon = 0.133;
 export const wrap = n => ((n % 360) + 360) % 360;
 export const difference = (target, current) => wrap(target - current + 180) - 180;
 export const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -6,7 +8,26 @@ export function compassName(deg) { return ['北','北北東','北東','東北東
 export function moonAt(date, latitude, longitude, sunCalc) {
   const position = sunCalc.getMoonPosition(date, latitude, longitude);
   const light = sunCalc.getMoonIllumination(date);
-  return {azimuth:wrap(position.azimuth/rad+180),altitude:position.altitude/rad,phase:light.phase,illumination:light.fraction};
+  return {azimuth:wrap(position.azimuth/rad+180),altitude:position.altitude/rad,aboveHorizon:position.altitude/rad>=moonHorizon,phase:light.phase,illumination:light.fraction};
+}
+export const moonEventSearchDays = 32;
+export function nextMoonEvent(now, latitude, longitude, sunCalc, aboveHorizon) {
+  const type=aboveHorizon?'set':'rise';
+  const start=new Date(now);start.setUTCHours(0,0,0,0);
+  const end=now.getTime()+moonEventSearchDays*86400000;
+  // UTC calendar days avoid DST's 23/25-hour days. Include the final partial day.
+  for(let day=0;day<=moonEventSearchDays;day++){
+    const times=sunCalc.getMoonTimes(new Date(start.getTime()+day*86400000),latitude,longitude,true);
+    const time=times[type];
+    if(time && Number.isFinite(time.getTime()) && time.getTime()>now.getTime() && time.getTime()<=end)return {type,time};
+  }
+  return {type,time:null};
+}
+export function formatMoonEventTime(time, now) {
+  const dayIndex=d=>Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000;
+  const days=dayIndex(time)-dayIndex(now);
+  const day=days===0?'今日':days===1?'明日':`${time.getMonth()+1}月${time.getDate()}日`;
+  return `${day} ${time.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',hour12:false})}ごろ`;
 }
 export function phaseName(phase) { return ['新月','満ちる月','上弦','満ちる月','満月','欠ける月','下弦','欠ける月'][Math.round(phase*8)%8]; }
 // W3C intrinsic Z-X'-Y'' rotation. Columns are screen right, screen up,

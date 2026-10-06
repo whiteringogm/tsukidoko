@@ -1,4 +1,4 @@
-const CACHE='tsukidoko-v1';
+const CACHE='tsukidoko-v2-moon-times';
 const ASSETS=['./','./index.html','./style.css','./app.js','./navigation.js','./manifest.json','./vendor/suncalc.js','./vendor/geomagnetism.js','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
 // An update waits until old clients close, avoiding a mixture of app versions.
